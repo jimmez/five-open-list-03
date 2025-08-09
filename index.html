@@ -17,7 +17,6 @@
       overflow-x: hidden;
     }
 
-    /* Top-right name+timestamp */
     #stamp {
       position: fixed;
       top: 6px;
@@ -78,7 +77,6 @@
       z-index: 1;
     }
 
-    /* Modal */
     #modal {
       display: none;
       position: fixed;
@@ -120,7 +118,6 @@
     .custom-time input { margin: 0 3px; }
     .custom-time button { margin-left: 4px; }
 
-    /* Volume panel */
     #volPanel {
       position: absolute;
       top: 100%;
@@ -136,7 +133,6 @@
     }
     #volPanel.show { display: flex; }
 
-    /* Vertical slider */
     #volSlider {
       position: relative;
       width: 28px;
@@ -191,7 +187,6 @@
       justify-content: center;
     }
 
-    /* Combine panel */
     #combinePanel { display: none; }
     #combinePanel.show { display: flex; }
     #combinePanel label {
@@ -378,8 +373,15 @@
       generatePrompt();
     }
 
+    // Click/tap to advance
     document.body.addEventListener('click', (e) => {
       if (e.target.closest('.controls') || e.target.closest('#modal')) return;
+      generatePrompt();
+    });
+
+    // Any key press (PC) to advance
+    window.addEventListener('keydown', (e) => {
+      if (document.getElementById('modal').style.display === 'flex') return;
       generatePrompt();
     });
 
