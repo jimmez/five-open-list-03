@@ -50,8 +50,7 @@
     .custom-time,
     .toggle-buttons,
     .combine-panel,
-    .names-panel,
-    .backup-panel {
+    .names-panel {
       display: flex;
       flex-wrap: wrap;
       gap: 6px;
@@ -285,28 +284,6 @@
       font-size: 13px;
     }
 
-    /* Toast */
-    #toast {
-      position: fixed;
-      bottom: 16px;
-      left: 50%;
-      transform: translateX(-50%);
-      background: #222;
-      color: #fff;
-      padding: 10px 14px;
-      border-radius: 8px;
-      border: 1px solid #444;
-      font-size: 13px;
-      opacity: 0;
-      pointer-events: none;
-      transition: opacity .2s ease, transform .2s ease;
-      z-index: 2000;
-    }
-    #toast.show {
-      opacity: 1;
-      transform: translateX(-50%) translateY(-4px);
-    }
-
     @media (max-width: 420px) {
       button { font-size: 12px; padding: 6px 9px; }
       #stamp { font-size: 10.5px; }
@@ -376,13 +353,6 @@
       <button onclick="applyCustomTime()" id="customBtn">Set</button>
     </div>
 
-    <!-- Backup/Restore panel -->
-    <div class="backup-panel">
-      <button id="backupBtn">💾 Backup</button>
-      <button id="restoreBtn">📥 Restore</button>
-      <input id="restoreFile" type="file" accept="application/json" style="display:none">
-    </div>
-
     <!-- Audio panel (Volume + Rate + Voice readout) -->
     <div id="volPanel" role="dialog" aria-label="Audio">
       <div class="slider-col">
@@ -425,9 +395,6 @@
     </div>
   </div>
 
-  <!-- Toast -->
-  <div id="toast" role="status" aria-live="polite"></div>
-
   <script>
     // ---- State ----
     let currentList = 'A';
@@ -448,7 +415,7 @@
 
     // Voices
     let voicePool = [];      // up to 5 diverse English voices
-    let randomVoicePerPrompt = false;
+    let randomVoicePerPrompt = false; // <--- NEW toggle
 
     // ---- Elements ----
     const volBtn = document.getElementById('volBtn');
@@ -467,11 +434,6 @@
     const voiceReadout = document.getElementById('voiceReadout');
     const voiceBtn = document.getElementById('voiceBtn');
     const audioStatus = document.getElementById('audioStatus');
-
-    const toast = document.getElementById('toast');
-    const backupBtn = document.getElementById('backupBtn');
-    const restoreBtn = document.getElementById('restoreBtn');
-    const restoreFile = document.getElementById('restoreFile');
 
     // ---- Init/Load ----
     function loadSettings() {
@@ -494,20 +456,12 @@
         const storedNames = JSON.parse(localStorage.getItem('promptListNames') || '{}');
         names = { ...defaultNames, ...storedNames };
       } catch(e){ names = { ...defaultNames }; }
-      // combine + timing
+      // combine
       combineMode = localStorage.getItem('combineMode') === 'true';
       try {
         const savedSel = JSON.parse(localStorage.getItem('combineSelection') || '[]');
         combineSelection = new Set(savedSel.filter(x => 'ABCDE'.includes(x)));
       } catch(e){ combineSelection = new Set(); }
-      const savedMin = parseInt(localStorage.getItem('minTime'), 10);
-      const savedMax = parseInt(localStorage.getItem('maxTime'), 10);
-      if (!isNaN(savedMin) && !isNaN(savedMax) && savedMax >= savedMin) {
-        minTime = savedMin; maxTime = savedMax;
-        highlightTimerByRange(minTime, maxTime);
-      } else {
-        highlightTimerButton('timeBtn10');
-      }
 
       updateListButtons();
       updateNameInputs();
@@ -520,6 +474,8 @@
       updateAudioStatus();
 
       setupVoices();
+      // default highlight for timing 10–20
+      highlightTimerButton('timeBtn10');
     }
 
     // ---- Names helpers ----
@@ -543,7 +499,6 @@
       if (document.getElementById('modal').style.display === 'flex') {
         document.getElementById('modalListLabel').textContent = getListName(currentList);
       }
-      showToast('Names saved');
     }
 
     // ---- List switching / editing ----
@@ -565,7 +520,6 @@
       localStorage.setItem('promptList_' + currentList, JSON.stringify(lists[currentList]));
       closeModal();
       generatePrompt();
-      showToast('List saved');
     }
 
     // ---- Generate ----
@@ -595,25 +549,8 @@
       const btn = document.getElementById(id);
       if (btn) btn.classList.add('active');
     }
-    function highlightTimerByRange(min, max) {
-      const map = {
-        'timeBtn5': [5,10],
-        'timeBtn10':[10,20],
-        'timeBtn30':[30,60],
-        'timeBtn90':[90,120],
-        'timeBtn150':[150,300]
-      };
-      let matched = false;
-      for (const id in map) {
-        const [a,b] = map[id];
-        if (a===min && b===max) { highlightTimerButton(id); matched = true; break; }
-      }
-      if (!matched) highlightTimerButton('customBtn');
-    }
     function setTimerPreset(min, max, btnId) {
       minTime = min; maxTime = max;
-      localStorage.setItem('minTime', String(minTime));
-      localStorage.setItem('maxTime', String(maxTime));
       highlightTimerButton(btnId);
       if (autoPlay) startTimer();
     }
@@ -622,8 +559,6 @@
       const max = parseInt(document.getElementById('maxCustom').value, 10);
       if (min > 0 && max >= min) {
         minTime = min; maxTime = max;
-        localStorage.setItem('minTime', String(minTime));
-        localStorage.setItem('maxTime', String(maxTime));
         highlightTimerButton('customBtn');
         if (autoPlay) startTimer();
       }
@@ -656,10 +591,12 @@
 
         const all = window.speechSynthesis.getVoices();
         if (randomVoicePerPrompt && voicePool.length) {
+          // pick random each time
           const chosen = randFrom(voicePool);
           const match = all.find(v => v.name === chosen.name);
           if (match) u.voice = match;
         } else {
+          // fixed fallback: first English voice
           const v = all.find(v => (v.lang||'').toLowerCase().startsWith('en'));
           if (v) u.voice = v;
         }
@@ -787,7 +724,13 @@
       const letter = e.target.dataset.letter;
       names[letter] = e.target.value || defaultNames[letter];
       if (nameSaveTimer) clearTimeout(nameSaveTimer);
-      nameSaveTimer = setTimeout(saveNames, 200);
+      nameSaveTimer = setTimeout(() => {
+        localStorage.setItem('promptListNames', JSON.stringify(names));
+        updateListButtons();
+        if (document.getElementById('modal').style.display === 'flex') {
+          document.getElementById('modalListLabel').textContent = getListName(currentList);
+        }
+      }, 200);
     }
     ['A','B','C','D','E'].forEach(l => {
       document.getElementById('name'+l).addEventListener('input', onNameInput);
@@ -804,6 +747,7 @@
       randomVoicePerPrompt = !randomVoicePerPrompt;
       localStorage.setItem('randomVoicePerPrompt', randomVoicePerPrompt);
       updateVoiceButtonUI();
+      // ensure we have a pool
       if (!voicePool.length) setupVoices();
     });
 
@@ -828,6 +772,7 @@
             if (!picks.find(p=>p.name===v.name)) picks.push(v);
           }
         }
+        // Heuristics for diversity
         const female = en.filter(v => /female/i.test(v.name));
         const male   = en.filter(v => /male/i.test(v.name));
         const us     = en.filter(v => /us/i.test(v.lang) || /US/i.test(v.name));
@@ -847,158 +792,7 @@
       refresh();
     }
 
-    // ---- Backup / Restore ----
-    function showToast(msg) {
-      toast.textContent = msg;
-      toast.classList.add('show');
-      clearTimeout(showToast._t);
-      showToast._t = setTimeout(()=> toast.classList.remove('show'), 1800);
-    }
-
-    function getExportData() {
-      return {
-        schema: "prompt-generator.v1",
-        exportedAt: new Date().toISOString(),
-        names,
-        lists,
-        settings: {
-          soundOn, autoPlay, volume, rate,
-          combineMode, combineSelection: Array.from(combineSelection),
-          randomVoicePerPrompt, minTime, maxTime
-        }
-      };
-    }
-
-    function download(filename, text) {
-      const blob = new Blob([text], {type: "application/json"});
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = filename;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      URL.revokeObjectURL(url);
-    }
-
-    function pad(n){ return String(n).padStart(2,'0'); }
-    function timestampName() {
-      const d = new Date();
-      const Y = d.getFullYear();
-      const M = pad(d.getMonth()+1);
-      const D = pad(d.getDate());
-      const h = pad(d.getHours());
-      const m = pad(d.getMinutes());
-      const s = pad(d.getSeconds());
-      return `${Y}${M}${D}-${h}${m}${s}`;
-    }
-
-    backupBtn.addEventListener('click', (e)=>{
-      e.stopPropagation();
-      const data = getExportData();
-      const fname = `prompts-backup-${timestampName()}.json`;
-      download(fname, JSON.stringify(data, null, 2));
-      showToast('Backup downloaded');
-    });
-
-    restoreBtn.addEventListener('click', (e)=>{
-      e.stopPropagation();
-      restoreFile.click();
-    });
-
-    restoreFile.addEventListener('change', async (e)=>{
-      const f = e.target.files?.[0];
-      if (!f) return;
-      try {
-        const text = await f.text();
-        const data = JSON.parse(text);
-
-        if (!data || !data.lists || !data.names) throw new Error('Invalid file');
-        const L = data.lists;
-        // Basic validation
-        ['A','B','C','D','E'].forEach(k=>{
-          if (!Array.isArray(L[k])) L[k] = [];
-          // sanitize to strings
-          L[k] = L[k].map(x => String(x)).filter(Boolean);
-        });
-
-        // Save lists
-        lists = L;
-        for (let k of ['A','B','C','D','E']) {
-          localStorage.setItem('promptList_' + k, JSON.stringify(lists[k]));
-        }
-
-        // Save names
-        names = { ...defaultNames, ...(data.names || {}) };
-        localStorage.setItem('promptListNames', JSON.stringify(names));
-
-        // Save settings if present
-        const s = data.settings || {};
-        if (typeof s.soundOn === 'boolean') { soundOn = s.soundOn; localStorage.setItem('soundOn', soundOn); }
-        if (typeof s.autoPlay === 'boolean') { autoPlay = s.autoPlay; localStorage.setItem('autoPlay', autoPlay); }
-        if (typeof s.volume === 'number') { volume = Math.max(0, Math.min(1, s.volume)); localStorage.setItem('volume', volume.toFixed(3)); }
-        if (typeof s.rate === 'number') { rate = Math.max(0.6, Math.min(1.6, s.rate)); localStorage.setItem('rate', rate.toFixed(3)); }
-        if (typeof s.combineMode === 'boolean') { combineMode = s.combineMode; localStorage.setItem('combineMode', combineMode); }
-        if (Array.isArray(s.combineSelection)) {
-          combineSelection = new Set(s.combineSelection.filter(x => 'ABCDE'.includes(x)));
-          localStorage.setItem('combineSelection', JSON.stringify(Array.from(combineSelection)));
-        }
-        if (typeof s.randomVoicePerPrompt === 'boolean') {
-          randomVoicePerPrompt = s.randomVoicePerPrompt;
-          localStorage.setItem('randomVoicePerPrompt', randomVoicePerPrompt);
-        }
-        if (typeof s.minTime === 'number' && typeof s.maxTime === 'number' && s.maxTime >= s.minTime) {
-          minTime = s.minTime; maxTime = s.maxTime;
-          localStorage.setItem('minTime', String(minTime));
-          localStorage.setItem('maxTime', String(maxTime));
-        }
-
-        // Refresh UI
-        updateListButtons();
-        updateNameInputs();
-        updateSoundButton();
-        updateAutoButton();
-        updateVolumeUI();
-        updateRateUI();
-        updateCombineUI();
-        updateVoiceButtonUI();
-        highlightTimerByRange(minTime, maxTime);
-        generatePrompt();
-
-        showToast('Restore complete');
-      } catch(err) {
-        console.error(err);
-        showToast('Restore failed: invalid file');
-      } finally {
-        restoreFile.value = '';
-      }
-    });
-
     // ---- Boot ----
-    function updateVoiceButtonUI(){
-      voiceBtn.textContent = randomVoicePerPrompt ? "🎲 Voice: ON" : "🎲 Voice: OFF";
-      voiceBtn.title = "Random voice per prompt: " + (randomVoicePerPrompt ? "ON" : "OFF");
-      voiceReadout.textContent = "Voice: " + (randomVoicePerPrompt ? "(random pool)" : "(fixed/auto)";
-    }
-    // (The above function is redeclared earlier; keeping this no-op to satisfy load order if minified)
-
-    function toggleNames() { document.getElementById('namesPanel').classList.toggle('show'); }
-
-    // Wire name inputs (again for load safety)
-    function onNameInput(e){
-      const letter = e.target.dataset.letter;
-      names[letter] = e.target.value || defaultNames[letter];
-      clearTimeout(onNameInput._t);
-      onNameInput._t = setTimeout(()=> {
-        localStorage.setItem('promptListNames', JSON.stringify(names));
-        updateListButtons();
-        if (document.getElementById('modal').style.display === 'flex') {
-          document.getElementById('modalListLabel').textContent = getListName(currentList);
-        }
-      }, 200);
-    }
-
-    // Event wiring already above; start app
     loadSettings();
     switchList('A');
   </script>
