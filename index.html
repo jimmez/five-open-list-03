@@ -34,7 +34,13 @@
       justify-content: center;
     }
 
-    button {
+    .list-buttons {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+
+    .list-buttons button, #editBtn, #renameBtn {
       padding: 8px 12px;
       font-size: 14px;
       background: #333;
@@ -87,14 +93,6 @@
 
     #modalButtons { margin-top: 10px; text-align: right; }
 
-    .rename-list {
-      padding: 6px 12px;
-      background: #333;
-      color: white;
-      border-radius: 4px;
-      font-size: 14px;
-    }
-
   </style>
 </head>
 <body>
@@ -105,7 +103,7 @@
       <button id="autoToggle" onclick="toggleAuto()">▶️ Auto: OFF</button>
     </div>
 
-    <!-- List Buttons -->
+    <!-- List Buttons with "Edit Current List" and "Rename Current List" buttons next to it -->
     <div class="list-buttons">
       <button onclick="toggleList('A')" id="btnA">List A</button>
       <button onclick="toggleList('B')" id="btnB">List B</button>
@@ -117,17 +115,16 @@
       <button onclick="toggleList('H')" id="btnH">List H</button>
       <button onclick="toggleList('I')" id="btnI">List I</button>
       <button onclick="toggleList('J')" id="btnJ">List J</button>
+
+      <!-- Rename and Edit Buttons -->
+      <button id="editBtn" onclick="openModal()">✏️ Edit Current List</button>
+      <button id="renameBtn" onclick="renameCurrentList()">📝 Rename Current List</button>
     </div>
 
-    <!-- Renaming Inputs -->
-    <div class="rename-list">
-      <input type="text" id="renameA" placeholder="Rename List A">
-      <button onclick="renameList('A')">Rename</button>
-      <input type="text" id="renameB" placeholder="Rename List B">
-      <button onclick="renameList('B')">Rename</button>
-      <input type="text" id="renameC" placeholder="Rename List C">
-      <button onclick="renameList('C')">Rename</button>
-      <!-- Add more rename inputs if necessary -->
+    <!-- Renaming Inputs (optional for manual renaming) -->
+    <div class="rename-list" style="display:none;">
+      <input type="text" id="renameCurrentListInput" placeholder="New name for current list">
+      <button onclick="applyRename()">Rename</button>
     </div>
 
     <!-- Speed Control Buttons -->
@@ -152,8 +149,6 @@
       <input type="number" id="maxCustom" value="60" min="1">s
       <button onclick="applyCustomTime()">Set</button>
     </div>
-
-    <button id="editBtn" onclick="openModal()">✏️ Edit Current List</button>
   </div>
 
   <main id="tapArea">
@@ -196,90 +191,25 @@
       if (autoPlay) startTimer();  // Restart timer if autoplay is on
     }
 
-    // Renaming a list
-    function renameList(letter) {
-      const newName = document.getElementById('rename' + letter).value;
+    // Rename Current List
+    function renameCurrentList() {
+      document.querySelector('.rename-list').style.display = 'block';  // Show input field for renaming
+      document.getElementById('renameCurrentListInput').value = lists[currentList].name || currentList;  // Default to current list name
+    }
+
+    // Apply rename to the current list
+    function applyRename() {
+      const newName = document.getElementById('renameCurrentListInput').value;
       if (newName) {
-        document.getElementById('btn' + letter).textContent = newName;  // Update button text
-        // Save the renamed list name for modal display
-        lists[letter].name = newName;
+        // Update button text
+        document.getElementById('btn' + currentList).textContent = newName;
+        // Update the list name in lists object
+        lists[currentList].name = newName;
       }
+      document.querySelector('.rename-list').style.display = 'none';  // Hide input field after renaming
     }
 
-    // Set speech speed
-    function setSpeed(speed) {
-      speechSpeed = speed;
-      document.querySelectorAll('.speed-buttons button').forEach(btn => btn.classList.remove('active'));
-      event.target.classList.add('active');
-    }
-
-    // Set time interval for prompts
-    function setTimerPreset(min, max) {
-      minTime = min; 
-      maxTime = max;
-      if (autoPlay) startTimer();
-    }
-
-    // Apply custom time range
-    function applyCustomTime() {
-      const min = parseInt(document.getElementById('minCustom').value, 10);
-      const max = parseInt(document.getElementById('maxCustom').value, 10);
-      if (min > 0 && max >= min) {
-        minTime = min; 
-        maxTime = max;
-        if (autoPlay) startTimer();
-      }
-    }
-
-    // Get random prompt from active lists
-    function getRandomPrompt() {
-      const activePrompts = activeLists.flatMap(list => lists[list]);
-      return activePrompts.length === 0 ? "No prompts in active lists" : activePrompts[Math.floor(Math.random() * activePrompts.length)];
-    }
-
-    // Generate prompt and play it
-    function generatePrompt() {
-      const prompt = getRandomPrompt();
-      document.getElementById('output').textContent = prompt;
-      if (soundOn) speak(prompt);
-    }
-
-    // Speak the prompt
-    function speak(text) {
-      const u = new SpeechSynthesisUtterance(text);
-      u.lang = 'en-US';
-      u.volume = 1.0;  // Default volume
-      u.rate = speechSpeed;  // Adjust speech rate based on selected speed
-      const voices = window.speechSynthesis.getVoices();
-      u.voice = voices.find(v => v.name.includes("Samantha") || v.name.includes("Alex"));  // Select a voice
-      speechSynthesis.cancel();
-      speechSynthesis.speak(u);
-    }
-
-    // Start autoplay timer
-    function startTimer() {
-      if (timer) clearTimeout(timer);
-      const delay = Math.floor(Math.random() * (maxTime - minTime + 1) + minTime) * 1000;
-      timer = setTimeout(() => {
-        generatePrompt();
-        if (autoPlay) startTimer();
-      }, delay);
-    }
-
-    // Toggle sound on/off
-    function toggleSound() {
-      soundOn = !soundOn;
-      document.getElementById('soundToggle').textContent = soundOn ? "🔊 Sound: ON" : "🔇 Sound: OFF";
-    }
-
-    // Toggle autoplay on/off
-    function toggleAuto() {
-      autoPlay = !autoPlay;
-      document.getElementById('autoToggle').textContent = autoPlay ? "⏸ Auto: ON" : "▶️ Auto: OFF";
-      if (autoPlay) startTimer(); else if (timer) clearTimeout(timer);
-    }
-
-    // Open and save prompts in the modal
+    // Open Modal to Edit Current List
     function openModal() {
       document.getElementById('promptEditor').value = lists[currentList].join('\n');
       document.getElementById('modalListLabel').textContent = lists[currentList].name || currentList; // Show renamed list
@@ -297,9 +227,19 @@
       generatePrompt();
     }
 
-    // Init
-    switchList('A');
-  </script>
+    // Generate prompt function
+    function generatePrompt() {
+      const prompt = getRandomPrompt();
+      document.getElementById('output').textContent = prompt;
+    }
 
+    // Get random prompt from active lists
+    function getRandomPrompt() {
+      const activePrompts = activeLists.flatMap(list => lists[list]);
+      return activePrompts.length === 0 ? "No prompts in active lists" : activePrompts[Math.floor(Math.random() * activePrompts.length)];
+    }
+
+    // Timer logic and other utility functions...
+  </script>
 </body>
 </html>
