@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Prompt Generator</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    /* Add styles for the voice buttons and speed control */
+    .voice-buttons, .speed-buttons {
+      display: flex;
+      gap: 10px;
+      margin-top: 10px;
+      justify-content: center;
+    }
+    .voice-buttons button, .speed-buttons button {
+      padding: 6px 12px;
+      background: #333;
+      color: white;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+    .voice-buttons button.active, .speed-buttons button.active {
+      background: #0a84ff;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="controls">
+    <div class="toggle-buttons">
+      <button id="soundToggle" onclick="toggleSound()">🔊 Sound: ON</button>
+      <button id="autoToggle" onclick="toggleAuto()">▶️ Auto: OFF</button>
+    </div>
+
+    <!-- Voice buttons -->
+    <div class="voice-buttons">
+      <button onclick="setVoice('female')" id="femaleVoiceBtn">👩‍🦰 Female Voice</button>
+      <button onclick="setVoice('male')" id="maleVoiceBtn">👨‍🦱 Male Voice</button>
+      <button onclick="toggleMixedVoices()">🔄 Mixed Voices</button>
+    </div>
+
+    <!-- Mixed voice options (hidden by default) -->
+    <div id="mixedVoiceButtons" class="voice-buttons" style="display: none;">
+      <button onclick="setVoice('mixed1')">Mixed 1</button>
+      <button onclick="setVoice('mixed2')">Mixed 2</button>
+      <button onclick="setVoice('mixed3')">Mixed 3</button>
+      <button onclick="setVoice('mixed4')">Mixed 4</button>
+      <button onclick="setVoice('mixed5')">Mixed 5</button>
+      <button onclick="setVoice('mixed6')">Mixed 6</button>
+      <button onclick="setVoice('mixed7')">Mixed 7</button>
+      <button onclick="setVoice('mixed8')">Mixed 8</button>
+      <button onclick="setVoice('mixed9')">Mixed 9</button>
+      <button onclick="setVoice('mixed10')">Mixed 10</button>
+    </div>
+
+    <!-- Speech speed control -->
+    <div class="speed-buttons">
+      <button onclick="setSpeed(1.0)">Normal Speed</button>
+      <button onclick="setSpeed(1.2)">Fast Speed</button>
+      <button onclick="setSpeed(0.8)">Slow Speed</button>
+    </div>
+    
+    <button id="editBtn" onclick="openModal()">✏️ Edit Current List</button>
+  </div>
+
+  <main id="tapArea" aria-label="Tap anywhere for next prompt">
+    <div id="output">Your prompt will appear here.</div>
+  </main>
+
+  <div id="modal">
+    <div id="modalContent">
+      <h3>Edit Prompts (List <span id="modalListLabel"></span>)</h3>
+      <textarea id="promptEditor"></textarea>
+      <div id="modalButtons">
+        <button onclick="closeModal()">Cancel</button>
+        <button onclick="savePrompts()">Save</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let currentList = 'A';
+    let activeLists = ['A'];  // Store active lists for autoplay
+    let lists = { A: [], B: [], C: [], D: [], E: [] };  // Add more lists as needed
+    let timer = null;
+    let minTime = 10;
+    let maxTime = 20;
+    let soundOn = true;
+    let autoPlay = false;
+    let speechSpeed = 1.0;  // Default speed
+    let selectedVoice = 'female';  // Default voice
+
+    // Toggle mixed voice options
+    function toggleMixedVoices() {
+      const mixedVoiceButtons = document.getElementById('mixedVoiceButtons');
+      mixedVoiceButtons.style.display = mixedVoiceButtons.style.display === 'none' ? 'flex' : 'none';
+    }
+
+    // Set selected voice
+    function setVoice(voiceType) {
+      selectedVoice = voiceType;
+      updateVoiceButtons();
+    }
+
+    function updateVoiceButtons() {
+      document.getElementById('femaleVoiceBtn').classList.remove('active');
+      document.getElementById('maleVoiceBtn').classList.remove('active');
+      if (selectedVoice === 'female') {
+        document.getElementById('femaleVoiceBtn').classList.add('active');
+      } else if (selectedVoice === 'male') {
+        document.getElementById('maleVoiceBtn').classList.add('active');
+      }
+    }
+
+    // Set speech speed
+    function setSpeed(speed) {
+      speechSpeed = speed;
+      document.querySelectorAll('.speed-buttons button').forEach(btn => btn.classList.remove('active'));
+      event.target.classList.add('active');
+    }
+
+    // Generate prompt function
+    function getRandomPrompt() {
+      const activePrompts = activeLists.flatMap(list => lists[list]);
+      return activePrompts.length === 0 ? "No prompts in active lists" : activePrompts[Math.floor(Math.random() * activePrompts.length)];
+    }
+
+    function generatePrompt() {
+      const prompt = getRandomPrompt();
+      document.getElementById('output').textContent = prompt;
+      if (soundOn) speak(prompt);
+    }
+
+    function speak(text) {
+      const u = new SpeechSynthesisUtterance(text);
+      u.lang = 'en-US';
+      u.volume = 1.0;  // Default volume
+      u.rate = speechSpeed;  // Set speech speed
+      const voices = window.speechSynthesis.getVoices();
+      
+      // Select voice based on selectedVoice
+      let voice;
+      if (selectedVoice === 'female') {
+        voice = voices.find(v => v.name?.includes("Samantha") || v.name?.includes("Google UK English Female"));
+      } else if (selectedVoice === 'male') {
+        voice = voices.find(v => v.name?.includes("Alex") || v.name?.includes("Google US English Male"));
+      } else if (selectedVoice.startsWith('mixed')) {
+        voice = voices[selectedVoice.replace('mixed', '') - 1]; // Assuming mixed voices are available by index
+      }
+      
+      if (voice) u.voice = voice;
+      speechSynthesis.cancel();
+      speechSynthesis.speak(u);
+    }
+
+    // Toggle sound, auto, and other controls as per the previous code
+
+    // The rest of your code follows, including list switching, prompt generation, etc.
+  </script>
+</body>
+</html>
