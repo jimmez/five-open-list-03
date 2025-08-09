@@ -1,12 +1,10 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
+  <meta charset="UTF-8">
   <title>Prompt Generator</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
   <style>
-    :root { --maxw: 480px; }
-
     body {
       margin: 0;
       font-family: Arial, sans-serif;
@@ -15,21 +13,21 @@
       display: flex;
       flex-direction: column;
       align-items: center;
-      min-height: 100vh;
+      height: 100vh;
+      overflow-x: hidden;
     }
 
-    /* Top-right name + timestamp + version */
+    /* Top-right name+timestamp */
     #stamp {
       position: fixed;
-      top: 8px;
-      right: 10px;
-      font-size: 12px;
+      top: 6px;
+      right: 8px;
+      font-size: 11px;
       color: #bbb;
       opacity: 0.9;
       z-index: 1100;
       pointer-events: none;
       white-space: nowrap;
-      text-align: right;
     }
 
     .controls {
@@ -37,11 +35,9 @@
       flex-direction: column;
       align-items: center;
       width: 100%;
-      max-width: var(--maxw);
-      padding: 10px;
-      position: relative; /* for the volume panel anchor */
+      padding: 6px;
+      position: relative;
       z-index: 2;
-      box-sizing: border-box;
     }
 
     .list-buttons,
@@ -51,36 +47,35 @@
     .combine-panel {
       display: flex;
       flex-wrap: wrap;
-      gap: 8px;
-      margin: 6px 0;
+      gap: 6px;
+      margin: 4px 0;
       justify-content: center;
-      width: 100%;
+      max-width: 100%;
     }
 
     button {
-      padding: 8px 12px;
-      font-size: 14px;
+      padding: 6px 10px;
+      font-size: 13px;
       background: #333;
       color: white;
       border: none;
       border-radius: 6px;
       cursor: pointer;
-      touch-action: manipulation; /* mobile tap responsiveness */
+      touch-action: manipulation;
+      flex: 1 1 auto;
+      max-width: 85px;
     }
 
     button.active { background: #0a84ff; }
-    #editBtn { margin: 5px 0; }
+    #editBtn { margin: 5px 0; max-width: 140px; }
 
     #output {
+      font-size: 8vw;
       font-weight: bold;
       text-align: center;
-      margin: 20px 12px 10px;
+      margin: 20px 10px 10px;
       word-break: break-word;
       z-index: 1;
-      /* scale nicely on phones and small tablets */
-      font-size: clamp(24px, 7.5vw, 48px);
-      line-height: 1.15;
-      max-width: var(--maxw);
     }
 
     /* Modal */
@@ -93,67 +88,59 @@
       justify-content: center;
       align-items: center;
       z-index: 1000;
-      padding: 12px;
-      box-sizing: border-box;
     }
     #modalContent {
       background: #222;
-      padding: 16px;
+      padding: 14px;
       border-radius: 10px;
-      width: 100%;
-      max-width: 500px;
-      box-sizing: border-box;
+      width: 92%;
+      max-width: 420px;
     }
     #promptEditor {
       width: 100%;
-      height: 300px;
+      height: 220px;
       background: #000;
       color: #fff;
-      font-size: 16px;
-      padding: 10px;
+      font-size: 14px;
+      padding: 8px;
       border: 1px solid #666;
-      box-sizing: border-box;
     }
-    #modalButtons { margin-top: 10px; text-align: right; }
+    #modalButtons { margin-top: 8px; text-align: right; }
 
     input[type="number"] {
-      width: 64px;
+      width: 48px;
       text-align: center;
-      padding: 4px;
-      font-size: 14px;
+      padding: 3px;
+      font-size: 13px;
       background: #111;
       color: white;
       border: 1px solid #444;
       border-radius: 4px;
     }
-    .custom-time input { margin: 0 4px; }
-    .custom-time button { margin-left: 5px; }
+    .custom-time input { margin: 0 3px; }
+    .custom-time button { margin-left: 4px; }
 
-    h3 { margin-top: 0; }
-
-    /* Volume panel (small window) */
+    /* Volume panel */
     #volPanel {
       position: absolute;
       top: 100%;
-      margin-top: 8px;
+      margin-top: 6px;
       background: #1a1a1a;
       border: 1px solid #444;
       border-radius: 10px;
-      padding: 10px 14px;
+      padding: 8px;
       display: none;
       align-items: center;
-      gap: 12px;
+      gap: 8px;
       box-shadow: 0 6px 18px rgba(0,0,0,0.4);
-      left: 50%;
-      transform: translateX(-50%);
     }
     #volPanel.show { display: flex; }
 
     /* Vertical slider */
     #volSlider {
       position: relative;
-      width: 32px;
-      height: 140px;
+      width: 28px;
+      height: 120px;
       background: #0d0d0d;
       border: 1px solid #333;
       border-radius: 10px;
@@ -162,13 +149,13 @@
       display: flex;
       align-items: flex-end;
       justify-content: center;
-      padding: 6px 0;
+      padding: 4px 0;
     }
     #volFill {
       position: absolute;
-      bottom: 6px;
-      left: 7px;
-      width: 18px;
+      bottom: 4px;
+      left: 6px;
+      width: 16px;
       height: 0%;
       background: linear-gradient(0deg,#33d17a,#f6d32d,#e01b24);
       border-radius: 6px;
@@ -176,8 +163,8 @@
     }
     #volThumb {
       position: absolute;
-      left: 4px;
-      width: 24px;
+      left: 3px;
+      width: 22px;
       height: 8px;
       background: #ccc;
       border-radius: 4px;
@@ -186,26 +173,22 @@
       pointer-events: none;
     }
     #volReadout {
-      font-size: 14px;
+      font-size: 12px;
       background: #111;
       border: 1px solid #333;
-      padding: 6px 10px;
+      padding: 4px 8px;
       border-radius: 8px;
-      min-width: 88px;
+      min-width: 72px;
       text-align: center;
     }
 
-    /* Make sure the rest of the page can be tapped for next prompt */
     main {
       position: relative;
       width: 100%;
-      max-width: var(--maxw);
       flex: 1;
       display: flex;
       align-items: center;
       justify-content: center;
-      box-sizing: border-box;
-      padding-bottom: 16px;
     }
 
     /* Combine panel */
@@ -214,34 +197,25 @@
     #combinePanel label {
       display: flex;
       align-items: center;
-      gap: 6px;
+      gap: 4px;
       background: #1a1a1a;
-      padding: 6px 10px;
+      padding: 4px 8px;
       border-radius: 8px;
       border: 1px solid #333;
-      font-size: 14px;
+      font-size: 12px;
     }
     #combineHelp {
       width: 100%;
       text-align: center;
-      font-size: 12px;
+      font-size: 11px;
       color: #aaa;
       margin-top: 2px;
-    }
-
-    /* Phone-specific tightening */
-    @media (max-width: 420px) {
-      button { font-size: 12px; padding: 8px 10px; }
-      .list-buttons, .timing-buttons, .toggle-buttons, .combine-panel { gap: 6px; }
-      #output { margin-top: 14px; }
-      #stamp { font-size: 11px; }
     }
   </style>
 </head>
 <body>
 
-  <!-- Top-right stamp -->
-  <div id="stamp">Jimmy James – 09.08.2025 - 23:02 - v.02</div>
+  <div id="stamp">Jimmy James – 09.08.2025 - 23:16 - v.03</div>
 
   <div class="controls">
 
@@ -249,7 +223,6 @@
       <button id="soundToggle" onclick="toggleSound()">🔊 Sound: ON</button>
       <button id="autoToggle" onclick="toggleAuto()">▶️ Auto: OFF</button>
       <button id="volBtn" aria-expanded="false" aria-controls="volPanel">🎚 Volume</button>
-      <!-- Combine toggle -->
       <button id="combineToggle" onclick="toggleCombine()">🔗 Combine: OFF</button>
     </div>
 
@@ -261,15 +234,14 @@
       <button onclick="switchList('E')" id="btnE">List E</button>
     </div>
 
-    <!-- Combine panel with checkboxes for lists -->
-    <div id="combinePanel" class="combine-panel" aria-label="Select lists to combine">
+    <div id="combinePanel" class="combine-panel">
       <label><input type="checkbox" value="A" onchange="toggleCombineList(this)"> A</label>
       <label><input type="checkbox" value="B" onchange="toggleCombineList(this)"> B</label>
       <label><input type="checkbox" value="C" onchange="toggleCombineList(this)"> C</label>
       <label><input type="checkbox" value="D" onchange="toggleCombineList(this)"> D</label>
       <label><input type="checkbox" value="E" onchange="toggleCombineList(this)"> E</label>
     </div>
-    <div id="combineHelp">Combine mode: pick ONE item from the selected lists.</div>
+    <div id="combineHelp">Select lists to combine: 1 random item from each</div>
 
     <button id="editBtn" onclick="openModal()">✏️ Edit Current List</button>
 
@@ -288,9 +260,8 @@
       <button onclick="applyCustomTime()" id="customBtn">Set</button>
     </div>
 
-    <!-- Volume small window -->
-    <div id="volPanel" role="dialog" aria-label="Volume">
-      <div id="volSlider" aria-label="Volume slider" tabindex="0">
+    <div id="volPanel">
+      <div id="volSlider">
         <div id="volFill"></div>
         <div id="volThumb"></div>
       </div>
@@ -298,11 +269,10 @@
     </div>
   </div>
 
-  <main id="tapArea" aria-label="Tap anywhere for next prompt">
+  <main id="tapArea">
     <div id="output">Your prompt will appear here.</div>
   </main>
 
-  <!-- Modal -->
   <div id="modal">
     <div id="modalContent">
       <h3>Edit Prompts (List <span id="modalListLabel"></span>)</h3>
@@ -322,46 +292,15 @@
     let maxTime = 20;
     let soundOn = true;
     let autoPlay = false;
-    let volume = 1.0; // 0..1
-
-    // Combine mode state
+    let volume = 1.0;
     let combineMode = false;
-    let combineSelection = new Set(); // holds letters 'A'..'E'
-
-    const tapArea = document.getElementById('tapArea');
-    const volBtn = document.getElementById('volBtn');
-    const volPanel = document.getElementById('volPanel');
-    const volSlider = document.getElementById('volSlider');
-    const volFill = document.getElementById('volFill');
-    const volThumb = document.getElementById('volThumb');
-    const volReadout = document.getElementById('volReadout');
-    const combinePanel = document.getElementById('combinePanel');
-    const combineToggleBtn = document.getElementById('combineToggle');
+    let combineLists = [];
 
     function loadSettings() {
       for (let key of Object.keys(lists)) {
         const stored = localStorage.getItem('promptList_' + key);
         if (stored) lists[key] = JSON.parse(stored);
       }
-      soundOn = localStorage.getItem('soundOn') !== 'false';
-      autoPlay = localStorage.getItem('autoPlay') === 'true';
-      const v = parseFloat(localStorage.getItem('volume'));
-      if (!isNaN(v)) volume = Math.min(1, Math.max(0, v));
-
-      // load combine settings + optional custom stamp
-      combineMode = localStorage.getItem('combineMode') === 'true';
-      try {
-        const saved = JSON.parse(localStorage.getItem('combineSelection') || '[]');
-        combineSelection = new Set(saved.filter(x => 'ABCDE'.includes(x)));
-      } catch(e) { combineSelection = new Set(); }
-      updateCombineUI();
-
-      const savedStamp = localStorage.getItem('stampText');
-      if (savedStamp) document.getElementById('stamp').textContent = savedStamp;
-
-      updateSoundButton();
-      updateAutoButton();
-      updateVolumeUI();
     }
 
     function saveCurrentList() {
@@ -375,37 +314,19 @@
       generatePrompt();
     }
 
-    function getRandomPrompt() {
-      const list = lists[currentList];
-      return list.length === 0
-        ? "No prompts in List " + currentList
-        : list[Math.floor(Math.random() * list.length)];
-    }
-
-    // Combine (pick ONE item from selected lists)
-    function getCombinedPrompt() {
-      const letters = Array.from(combineSelection);
-      if (letters.length === 0) {
-        return getRandomPrompt(); // no selection -> fall back to current list
-      }
-      // Build pool of non-empty lists among selection
-      const pools = letters
-        .map(letter => lists[letter] || [])
-        .filter(arr => arr.length > 0);
-
-      if (pools.length === 0) {
-        return "No prompts in selected lists";
-      }
-
-      // Pick a random list, then a random item from that list
-      const chosenList = pools[Math.floor(Math.random() * pools.length)];
-      return chosenList[Math.floor(Math.random() * chosenList.length)];
+    function getRandomPromptFromList(letter) {
+      const list = lists[letter];
+      return list.length === 0 ? `[No items in ${letter}]` : list[Math.floor(Math.random() * list.length)];
     }
 
     function generatePrompt() {
-      const prompt = combineMode ? getCombinedPrompt() : getRandomPrompt();
+      let prompt;
+      if (combineMode && combineLists.length > 0) {
+        prompt = combineLists.map(letter => getRandomPromptFromList(letter)).join(' ');
+      } else {
+        prompt = getRandomPromptFromList(currentList);
+      }
       document.getElementById('output').textContent = prompt;
-      if (soundOn) speak(prompt);
     }
 
     function openModal() {
@@ -417,19 +338,14 @@
       document.getElementById('modal').style.display = 'none';
     }
     function savePrompts() {
-      lists[currentList] = document.getElementById('promptEditor').value
-        .trim()
-        .split('\n')
-        .map(x => x.trim())
-        .filter(Boolean);
+      lists[currentList] = document.getElementById('promptEditor').value.trim().split('\n').map(x => x.trim()).filter(Boolean);
       saveCurrentList();
-      generatePrompt();
       closeModal();
+      generatePrompt();
     }
 
     function setTimerPreset(min, max) {
       minTime = min; maxTime = max;
-      highlightTimerButton(`timeBtn${min}`);
       if (autoPlay) startTimer();
     }
     function applyCustomTime() {
@@ -437,14 +353,8 @@
       const max = parseInt(document.getElementById('maxCustom').value, 10);
       if (min > 0 && max >= min) {
         minTime = min; maxTime = max;
-        highlightTimerButton('customBtn');
         if (autoPlay) startTimer();
       }
-    }
-    function highlightTimerButton(id) {
-      document.querySelectorAll('.timing-buttons button, .custom-time button').forEach(btn => btn.classList.remove('active'));
-      const btn = document.getElementById(id);
-      if (btn) btn.classList.add('active');
     }
     function startTimer() {
       if (timer) clearTimeout(timer);
@@ -455,135 +365,24 @@
       }, delay);
     }
 
-    function toggleSound() {
-      soundOn = !soundOn;
-      localStorage.setItem('soundOn', soundOn);
-      updateSoundButton();
-    }
-    function updateSoundButton() {
-      document.getElementById('soundToggle').textContent = soundOn ? "🔊 Sound: ON" : "🔇 Sound: OFF";
-    }
-
-    function toggleAuto() {
-      autoPlay = !autoPlay;
-      localStorage.setItem('autoPlay', autoPlay);
-      updateAutoButton();
-      if (autoPlay) startTimer(); else if (timer) clearTimeout(timer);
-    }
-    function updateAutoButton() {
-      document.getElementById('autoToggle').textContent = autoPlay ? "⏸ Auto: ON" : "▶️ Auto: OFF";
-    }
-
-    function speak(text) {
-      const u = new SpeechSynthesisUtterance(text);
-      u.lang = 'en-US';
-      u.volume = volume;
-      const voices = window.speechSynthesis.getVoices();
-      const preferred = voices.find(v =>
-        v.name?.includes("Samantha") || v.name?.includes("Alexa") || v.name?.includes("Google US English")
-      );
-      if (preferred) u.voice = preferred;
-      speechSynthesis.cancel();
-      speechSynthesis.speak(u);
-    }
-
-    // ----- Volume button + slider -----
-    function toggleVolPanel() {
-      const open = volPanel.classList.toggle('show');
-      volBtn.setAttribute('aria-expanded', open ? 'true' : 'false');
-      if (open) positionVolPanel();
-    }
-    volBtn.addEventListener('click', (e) => {
-      e.stopPropagation(); // prevent tap from generating a prompt
-      toggleVolPanel();
-    });
-
-    function positionVolPanel() {
-      // center under the toggle-buttons row
-      const btnRect = volBtn.getBoundingClientRect();
-      const panelRect = volPanel.getBoundingClientRect();
-      const left = Math.max(8, btnRect.left + (btnRect.width/2) - (panelRect.width/2));
-      volPanel.style.left = left + 'px';
-    }
-
-    function updateVolumeUI() {
-      const h = volSlider.clientHeight - 12; // minus top/bottom padding
-      const percent = Math.round(volume * 100);
-      volFill.style.height = Math.round(volume * h) + 'px';
-      volThumb.style.transform = `translateY(${-(volume * h) + 0}px)`;
-      volReadout.textContent = 'Volume: ' + percent + '%';
-    }
-
-    function setVolumeFromY(clientY) {
-      const r = volSlider.getBoundingClientRect();
-      const y = clientY - r.top - 6;       // account for padding
-      const h = r.height - 12;
-      let v = 1 - (y / h);
-      v = Math.max(0, Math.min(1, v));
-      if (Math.abs(v - volume) > 0.001) {
-        volume = v;
-        localStorage.setItem('volume', volume.toFixed(3));
-        updateVolumeUI();
-      }
-    }
-
-    let draggingVol = false;
-    volSlider.addEventListener('pointerdown', (e) => {
-      draggingVol = true;
-      volSlider.setPointerCapture(e.pointerId);
-      setVolumeFromY(e.clientY);
-      e.stopPropagation();
-    });
-    volSlider.addEventListener('pointermove', (e) => {
-      if (!draggingVol) return;
-      setVolumeFromY(e.clientY);
-      e.stopPropagation();
-    });
-    volSlider.addEventListener('pointerup', (e) => {
-      draggingVol = false;
-      volSlider.releasePointerCapture(e.pointerId);
-      e.stopPropagation();
-    });
-
-    // Close volume panel if tapping elsewhere
-    document.addEventListener('click', (e) => {
-      if (!volPanel.classList.contains('show')) return;
-      const within = e.target.closest('#volPanel') || e.target.closest('#volBtn');
-      if (!within) volPanel.classList.remove('show');
-    });
-
-    // Tap to advance prompt (ignore taps on controls/panels)
-    document.body.addEventListener('click', (e) => {
-      if (e.target.closest('.controls')) return;
-      if (e.target.closest('#volPanel')) return;
-      if (e.target.closest('#modal')) return;
-      generatePrompt();
-    });
-    window.addEventListener('keydown', () => generatePrompt());
-
-    // Combine controls
+    function toggleSound() { soundOn = !soundOn; }
+    function toggleAuto() { autoPlay = !autoPlay; if (autoPlay) startTimer(); else clearTimeout(timer); }
     function toggleCombine() {
       combineMode = !combineMode;
-      localStorage.setItem('combineMode', combineMode);
-      updateCombineUI();
-      generatePrompt();
-    }
-    function updateCombineUI() {
-      combineToggleBtn.textContent = combineMode ? "🔗 Combine: ON" : "🔗 Combine: OFF";
-      combinePanel.classList.toggle('show', combineMode);
-      // sync checkboxes with selection
-      combinePanel.querySelectorAll('input[type="checkbox"]').forEach(cb => {
-        cb.checked = combineSelection.has(cb.value);
-      });
+      document.getElementById('combineToggle').textContent = combineMode ? "🔗 Combine: ON" : "🔗 Combine: OFF";
+      document.getElementById('combinePanel').classList.toggle('show', combineMode);
     }
     function toggleCombineList(cb) {
-      if (cb.checked) combineSelection.add(cb.value);
-      else combineSelection.delete(cb.value);
-      localStorage.setItem('combineSelection', JSON.stringify(Array.from(combineSelection)));
+      if (cb.checked) { if (!combineLists.includes(cb.value)) combineLists.push(cb.value); }
+      else { combineLists = combineLists.filter(l => l !== cb.value); }
       generatePrompt();
     }
 
-    // Init
+    document.body.addEventListener('click', (e) => {
+      if (e.target.closest('.controls') || e.target.closest('#modal')) return;
+      generatePrompt();
+    });
+
     loadSettings();
     switchList('A');
   </script>
