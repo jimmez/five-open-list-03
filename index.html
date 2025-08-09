@@ -83,6 +83,17 @@
       max-width: var(--maxw);
     }
 
+    /* Tiny inline status for audio */
+    #audioStatus {
+      font-size: 12px;
+      color: #bbb;
+      padding: 6px 10px;
+      border: 1px solid #333;
+      border-radius: 6px;
+      background: #1a1a1a;
+      white-space: nowrap;
+    }
+
     /* Modal */
     #modal {
       display: none;
@@ -201,7 +212,7 @@
       width: 100%;
     }
 
-    /* Readouts */
+    /* Readouts in panel */
     #volReadout, #rateReadout, #voiceReadout {
       font-size: 12px;
       background: #111;
@@ -294,7 +305,8 @@
       <button id="volBtn" aria-expanded="false" aria-controls="volPanel">🎚 Audio</button>
       <button id="combineToggle" onclick="toggleCombine()">🔗 Combine: OFF</button>
       <button id="namesToggle" onclick="toggleNames()">📝 Names</button>
-      <button id="voiceBtn" title="Randomize voice">🎲 Voice</button>
+      <button id="voiceBtn" title="Random voice per prompt: OFF">🎲 Voice: OFF</button>
+      <span id="audioStatus" aria-live="polite">Vol 100% • 1.00×</span>
     </div>
 
     <div class="list-buttons">
@@ -327,11 +339,11 @@
     <button id="editBtn" onclick="openModal()">✏️ Edit Current List</button>
 
     <div class="timing-buttons">
-      <button onclick="setTimerPreset(5, 10)" id="timeBtn5">5–10s</button>
-      <button onclick="setTimerPreset(10, 20)" id="timeBtn10">10–20s</button>
-      <button onclick="setTimerPreset(30, 60)" id="timeBtn30">30–60s</button>
-      <button onclick="setTimerPreset(90, 120)" id="timeBtn90">90–120s</button>
-      <button onclick="setTimerPreset(150, 300)" id="timeBtn150">150–300s</button>
+      <button onclick="setTimerPreset(5, 10, 'timeBtn5')" id="timeBtn5">5–10s</button>
+      <button onclick="setTimerPreset(10, 20, 'timeBtn10')" id="timeBtn10">10–20s</button>
+      <button onclick="setTimerPreset(30, 60, 'timeBtn30')" id="timeBtn30">30–60s</button>
+      <button onclick="setTimerPreset(90, 120, 'timeBtn90')" id="timeBtn90">90–120s</button>
+      <button onclick="setTimerPreset(150, 300, 'timeBtn150')" id="timeBtn150">150–300s</button>
     </div>
 
     <div class="custom-time">
@@ -362,7 +374,7 @@
       <div style="display:flex; flex-direction:column; gap:6px; align-items:center;">
         <div id="volReadout">Volume: 100%</div>
         <div id="rateReadout">Rate: 1.00×</div>
-        <div id="voiceReadout">Voice: (auto)</div>
+        <div id="voiceReadout">Voice: (auto/random)</div>
       </div>
     </div>
   </div>
@@ -403,7 +415,7 @@
 
     // Voices
     let voicePool = [];      // up to 5 diverse English voices
-    let selectedVoiceName = null;
+    let randomVoicePerPrompt = false; // <--- NEW toggle
 
     // ---- Elements ----
     const volBtn = document.getElementById('volBtn');
@@ -421,33 +433,35 @@
 
     const voiceReadout = document.getElementById('voiceReadout');
     const voiceBtn = document.getElementById('voiceBtn');
+    const audioStatus = document.getElementById('audioStatus');
 
     // ---- Init/Load ----
     function loadSettings() {
+      // lists
       for (let key of Object.keys(lists)) {
         const stored = localStorage.getItem('promptList_' + key);
         if (stored) lists[key] = JSON.parse(stored);
       }
+      // toggles
       soundOn = localStorage.getItem('soundOn') !== 'false';
       autoPlay = localStorage.getItem('autoPlay') === 'true';
+      randomVoicePerPrompt = localStorage.getItem('randomVoicePerPrompt') === 'true';
+      // audio
       const v = parseFloat(localStorage.getItem('volume'));
       if (!isNaN(v)) volume = Math.min(1, Math.max(0, v));
-
       const r = parseFloat(localStorage.getItem('rate'));
       if (!isNaN(r)) rate = Math.min(1.6, Math.max(0.6, r));
-
+      // names
       try {
         const storedNames = JSON.parse(localStorage.getItem('promptListNames') || '{}');
         names = { ...defaultNames, ...storedNames };
       } catch(e){ names = { ...defaultNames }; }
-
+      // combine
       combineMode = localStorage.getItem('combineMode') === 'true';
       try {
         const savedSel = JSON.parse(localStorage.getItem('combineSelection') || '[]');
         combineSelection = new Set(savedSel.filter(x => 'ABCDE'.includes(x)));
       } catch(e){ combineSelection = new Set(); }
-
-      selectedVoiceName = localStorage.getItem('selectedVoiceName') || null;
 
       updateListButtons();
       updateNameInputs();
@@ -456,9 +470,12 @@
       updateVolumeUI();
       updateRateUI();
       updateCombineUI();
+      updateVoiceButtonUI();
+      updateAudioStatus();
 
-      // prepare voices
       setupVoices();
+      // default highlight for timing 10–20
+      highlightTimerButton('timeBtn10');
     }
 
     // ---- Names helpers ----
@@ -517,12 +534,7 @@
         // ONE item from the pool of selected lists
         const letters = Array.from(combineSelection);
         const nonEmpty = letters.filter(l => (lists[l] || []).length > 0);
-        if (nonEmpty.length === 0) {
-          text = "No prompts in selected lists";
-        } else {
-          const chosenList = randFrom(nonEmpty);
-          text = getRandomFrom(chosenList);
-        }
+        text = nonEmpty.length ? getRandomFrom(randFrom(nonEmpty)) : "No prompts in selected lists";
       } else {
         text = getRandomFrom(currentList);
       }
@@ -530,9 +542,16 @@
       if (soundOn) speak(text);
     }
 
-    // ---- Timer ----
-    function setTimerPreset(min, max) {
+    // ---- Timer + blue highlight on active ----
+    function highlightTimerButton(id) {
+      document.querySelectorAll('.timing-buttons button, .custom-time button')
+        .forEach(b => b.classList.remove('active'));
+      const btn = document.getElementById(id);
+      if (btn) btn.classList.add('active');
+    }
+    function setTimerPreset(min, max, btnId) {
       minTime = min; maxTime = max;
+      highlightTimerButton(btnId);
       if (autoPlay) startTimer();
     }
     function applyCustomTime() {
@@ -540,6 +559,7 @@
       const max = parseInt(document.getElementById('maxCustom').value, 10);
       if (min > 0 && max >= min) {
         minTime = min; maxTime = max;
+        highlightTimerButton('customBtn');
         if (autoPlay) startTimer();
       }
     }
@@ -568,15 +588,19 @@
         u.lang = 'en-US';
         u.volume = volume;
         u.rate = rate;
-        const voices = window.speechSynthesis.getVoices();
-        if (selectedVoiceName) {
-          const v = voices.find(v => v.name === selectedVoiceName);
-          if (v) u.voice = v;
+
+        const all = window.speechSynthesis.getVoices();
+        if (randomVoicePerPrompt && voicePool.length) {
+          // pick random each time
+          const chosen = randFrom(voicePool);
+          const match = all.find(v => v.name === chosen.name);
+          if (match) u.voice = match;
         } else {
-          // try first english voice as fallback
-          const v = voices.find(v => (v.lang||'').toLowerCase().startsWith('en'));
+          // fixed fallback: first English voice
+          const v = all.find(v => (v.lang||'').toLowerCase().startsWith('en'));
           if (v) u.voice = v;
         }
+
         speechSynthesis.cancel();
         speechSynthesis.speak(u);
       } catch(e) { /* ignore */ }
@@ -594,12 +618,17 @@
     }
 
     // ---- Volume slider ----
+    function updateAudioStatus() {
+      const pct = Math.round(volume * 100);
+      audioStatus.textContent = `Vol ${pct}% • ${rate.toFixed(2)}×`;
+    }
     function updateVolumeUI() {
       const h = volSlider.clientHeight - 12;
       const percent = Math.round(volume * 100);
       volFill.style.height = Math.round(volume * h) + 'px';
       volThumb.style.transform = `translateY(${-(volume * h)}px)`;
       volReadout.textContent = 'Volume: ' + percent + '%';
+      updateAudioStatus();
     }
     function setVolumeFromY(clientY) {
       const r = volSlider.getBoundingClientRect();
@@ -626,19 +655,19 @@
     // ---- Rate slider ----
     function updateRateUI() {
       const h = rateSlider.clientHeight - 12;
-      // Map rate 0.6..1.6 to 0..1
-      const t = (rate - 0.6) / (1.6 - 0.6);
+      const t = (rate - 0.6) / (1.6 - 0.6); // 0..1
       rateFill.style.height = Math.round(t * h) + 'px';
       rateThumb.style.transform = `translateY(${-(t * h)}px)`;
       rateReadout.textContent = 'Rate: ' + rate.toFixed(2) + '×';
+      updateAudioStatus();
     }
     function setRateFromY(clientY) {
       const r = rateSlider.getBoundingClientRect();
       const y = clientY - r.top - 6;
       const h = r.height - 12;
-      let t = 1 - (y / h);                 // 0..1
+      let t = 1 - (y / h);
       t = Math.max(0, Math.min(1, t));
-      const newRate = 0.6 + t * (1.6 - 0.6); // 0.6..1.6
+      const newRate = 0.6 + t * (1.6 - 0.6);
       if (Math.abs(newRate - rate) > 0.005) {
         rate = newRate;
         localStorage.setItem('rate', rate.toFixed(3));
@@ -655,7 +684,7 @@
     rateSlider.addEventListener('pointermove', (e) => { if (draggingRate) setRateFromY(e.clientY); e.stopPropagation(); });
     rateSlider.addEventListener('pointerup', (e) => { draggingRate = false; rateSlider.releasePointerCapture(e.pointerId); e.stopPropagation(); });
 
-    // ---- Voice panel toggle ----
+    // ---- Audio panel toggle ----
     function toggleVolPanel() {
       const open = volPanel.classList.toggle('show');
       volBtn.setAttribute('aria-expanded', open ? 'true' : 'false');
@@ -695,10 +724,31 @@
       const letter = e.target.dataset.letter;
       names[letter] = e.target.value || defaultNames[letter];
       if (nameSaveTimer) clearTimeout(nameSaveTimer);
-      nameSaveTimer = setTimeout(saveNames, 200);
+      nameSaveTimer = setTimeout(() => {
+        localStorage.setItem('promptListNames', JSON.stringify(names));
+        updateListButtons();
+        if (document.getElementById('modal').style.display === 'flex') {
+          document.getElementById('modalListLabel').textContent = getListName(currentList);
+        }
+      }, 200);
     }
     ['A','B','C','D','E'].forEach(l => {
       document.getElementById('name'+l).addEventListener('input', onNameInput);
+    });
+
+    // ---- Random voice per prompt toggle ----
+    function updateVoiceButtonUI(){
+      voiceBtn.textContent = randomVoicePerPrompt ? "🎲 Voice: ON" : "🎲 Voice: OFF";
+      voiceBtn.title = "Random voice per prompt: " + (randomVoicePerPrompt ? "ON" : "OFF");
+      voiceReadout.textContent = "Voice: " + (randomVoicePerPrompt ? "(random pool)" : "(fixed/auto)");
+    }
+    voiceBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      randomVoicePerPrompt = !randomVoicePerPrompt;
+      localStorage.setItem('randomVoicePerPrompt', randomVoicePerPrompt);
+      updateVoiceButtonUI();
+      // ensure we have a pool
+      if (!voicePool.length) setupVoices();
     });
 
     // ---- Advance prompt by tap/click or any key ----
@@ -714,79 +764,33 @@
     // ---- Voices handling ----
     function setupVoices() {
       function buildPool(all) {
-        // Prefer English voices
         const en = all.filter(v => (v.lang || '').toLowerCase().startsWith('en'));
-        // Try to pick a diverse set up to 5
         const picks = [];
-
-        function pick(fn) {
-          const cands = en.filter(fn);
-          if (cands.length) { const v = cands[Math.floor(Math.random()*cands.length)];
-            if (!picks.find(p=>p.name===v.name)) picks.push(v);
-          }
-        }
-
-        // Heuristics by name
-        pick(v => /female/i.test(v.name) || /Google UK English Female/i.test(v.name));
-        pick(v => /male/i.test(v.name) || /Google UK English Male/i.test(v.name));
-        pick(v => /US/i.test(v.lang) || /US/i.test(v.name));
-        pick(v => /GB|UK/i.test(v.lang) || /UK/i.test(v.name));
-        pick(v => true); // any english
-
-        // Fill up to 5 with any remaining english
-        for (const v of en) {
-          if (picks.length >= 5) break;
-          if (!picks.find(p=>p.name===v.name)) picks.push(v);
-        }
-        // Fallback to any voices if none english
-        if (picks.length === 0) {
-          for (const v of all) {
+        function addUnique(list) {
+          for (const v of list) {
             if (picks.length >= 5) break;
             if (!picks.find(p=>p.name===v.name)) picks.push(v);
           }
         }
+        // Heuristics for diversity
+        const female = en.filter(v => /female/i.test(v.name));
+        const male   = en.filter(v => /male/i.test(v.name));
+        const us     = en.filter(v => /us/i.test(v.lang) || /US/i.test(v.name));
+        const uk     = en.filter(v => /gb|uk/i.test(v.lang) || /UK|English UK/i.test(v.name));
+        addUnique([...(female||[]), ...(male||[]), ...(us||[]), ...(uk||[])]);
+        addUnique(en);
+        if (!picks.length) addUnique(all);
         return picks.slice(0,5);
       }
-
       function refresh() {
         const all = window.speechSynthesis.getVoices();
         if (!all || all.length === 0) return;
         voicePool = buildPool(all);
-
-        // Restore selected voice if present
-        if (selectedVoiceName) {
-          const found = all.find(v => v.name === selectedVoiceName);
-          if (!found) selectedVoiceName = null;
-        }
-        // Default to first in pool if none chosen
-        if (!selectedVoiceName && voicePool.length) {
-          selectedVoiceName = voicePool[0].name;
-          localStorage.setItem('selectedVoiceName', selectedVoiceName);
-        }
-        updateVoiceReadout();
+        updateVoiceButtonUI();
       }
-
-      // Some browsers populate voices async
       window.speechSynthesis.onvoiceschanged = refresh;
       refresh();
     }
-
-    function updateVoiceReadout() {
-      voiceReadout.textContent = 'Voice: ' + (selectedVoiceName || '(auto)');
-    }
-
-    voiceBtn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      if (!voicePool.length) {
-        setupVoices();
-      }
-      if (voicePool.length) {
-        const choice = voicePool[Math.floor(Math.random() * voicePool.length)];
-        selectedVoiceName = choice.name;
-        localStorage.setItem('selectedVoiceName', selectedVoiceName);
-        updateVoiceReadout();
-      }
-    });
 
     // ---- Boot ----
     loadSettings();
