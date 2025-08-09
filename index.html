@@ -17,6 +17,7 @@
       overflow-x: hidden;
     }
 
+    /* Top-right stamp */
     #stamp {
       position: fixed;
       top: 6px;
@@ -27,6 +28,7 @@
       z-index: 1100;
       pointer-events: none;
       white-space: nowrap;
+      text-align: right;
     }
 
     .controls {
@@ -37,19 +39,22 @@
       padding: 6px;
       position: relative;
       z-index: 2;
+      box-sizing: border-box;
     }
 
     .list-buttons,
     .timing-buttons,
     .custom-time,
     .toggle-buttons,
-    .combine-panel {
+    .combine-panel,
+    .names-panel {
       display: flex;
       flex-wrap: wrap;
       gap: 6px;
       margin: 4px 0;
       justify-content: center;
-      max-width: 100%;
+      width: 100%;
+      max-width: 480px;
     }
 
     button {
@@ -62,21 +67,24 @@
       cursor: pointer;
       touch-action: manipulation;
       flex: 1 1 auto;
-      max-width: 85px;
+      max-width: 110px;
     }
 
     button.active { background: #0a84ff; }
-    #editBtn { margin: 5px 0; max-width: 140px; }
+    #editBtn { margin: 5px 0; max-width: 160px; }
 
     #output {
-      font-size: 8vw;
       font-weight: bold;
       text-align: center;
       margin: 20px 10px 10px;
       word-break: break-word;
       z-index: 1;
+      font-size: clamp(22px, 8vw, 46px);
+      line-height: 1.15;
+      max-width: 480px;
     }
 
+    /* Modal */
     #modal {
       display: none;
       position: fixed;
@@ -86,27 +94,31 @@
       justify-content: center;
       align-items: center;
       z-index: 1000;
+      padding: 12px;
+      box-sizing: border-box;
     }
     #modalContent {
       background: #222;
       padding: 14px;
       border-radius: 10px;
-      width: 92%;
-      max-width: 420px;
+      width: 100%;
+      max-width: 460px;
+      box-sizing: border-box;
     }
     #promptEditor {
       width: 100%;
-      height: 220px;
+      height: 240px;
       background: #000;
       color: #fff;
       font-size: 14px;
       padding: 8px;
       border: 1px solid #666;
+      box-sizing: border-box;
     }
     #modalButtons { margin-top: 8px; text-align: right; }
 
     input[type="number"] {
-      width: 48px;
+      width: 52px;
       text-align: center;
       padding: 3px;
       font-size: 13px;
@@ -118,6 +130,7 @@
     .custom-time input { margin: 0 3px; }
     .custom-time button { margin-left: 4px; }
 
+    /* Volume panel */
     #volPanel {
       position: absolute;
       top: 100%;
@@ -133,6 +146,7 @@
     }
     #volPanel.show { display: flex; }
 
+    /* Vertical slider */
     #volSlider {
       position: relative;
       width: 28px;
@@ -187,6 +201,7 @@
       justify-content: center;
     }
 
+    /* Combine panel */
     #combinePanel { display: none; }
     #combinePanel.show { display: flex; }
     #combinePanel label {
@@ -205,188 +220,22 @@
       font-size: 11px;
       color: #aaa;
       margin-top: 2px;
-    }
-  </style>
-</head>
-<body>
-
-  <div id="stamp">Jimmy James – 09.08.2025 - 23:16 - v.03</div>
-
-  <div class="controls">
-
-    <div class="toggle-buttons">
-      <button id="soundToggle" onclick="toggleSound()">🔊 Sound: ON</button>
-      <button id="autoToggle" onclick="toggleAuto()">▶️ Auto: OFF</button>
-      <button id="volBtn" aria-expanded="false" aria-controls="volPanel">🎚 Volume</button>
-      <button id="combineToggle" onclick="toggleCombine()">🔗 Combine: OFF</button>
-    </div>
-
-    <div class="list-buttons">
-      <button onclick="switchList('A')" id="btnA">List A</button>
-      <button onclick="switchList('B')" id="btnB">List B</button>
-      <button onclick="switchList('C')" id="btnC">List C</button>
-      <button onclick="switchList('D')" id="btnD">List D</button>
-      <button onclick="switchList('E')" id="btnE">List E</button>
-    </div>
-
-    <div id="combinePanel" class="combine-panel">
-      <label><input type="checkbox" value="A" onchange="toggleCombineList(this)"> A</label>
-      <label><input type="checkbox" value="B" onchange="toggleCombineList(this)"> B</label>
-      <label><input type="checkbox" value="C" onchange="toggleCombineList(this)"> C</label>
-      <label><input type="checkbox" value="D" onchange="toggleCombineList(this)"> D</label>
-      <label><input type="checkbox" value="E" onchange="toggleCombineList(this)"> E</label>
-    </div>
-    <div id="combineHelp">Select lists to combine: 1 random item from each</div>
-
-    <button id="editBtn" onclick="openModal()">✏️ Edit Current List</button>
-
-    <div class="timing-buttons">
-      <button onclick="setTimerPreset(5, 10)" id="timeBtn5">5–10s</button>
-      <button onclick="setTimerPreset(10, 20)" id="timeBtn10">10–20s</button>
-      <button onclick="setTimerPreset(30, 60)" id="timeBtn30">30–60s</button>
-      <button onclick="setTimerPreset(90, 120)" id="timeBtn90">90–120s</button>
-      <button onclick="setTimerPreset(150, 300)" id="timeBtn150">150–300s</button>
-    </div>
-
-    <div class="custom-time">
-      Custom:
-      <input type="number" id="minCustom" value="10" min="1">–
-      <input type="number" id="maxCustom" value="60" min="1">s
-      <button onclick="applyCustomTime()" id="customBtn">Set</button>
-    </div>
-
-    <div id="volPanel">
-      <div id="volSlider">
-        <div id="volFill"></div>
-        <div id="volThumb"></div>
-      </div>
-      <div id="volReadout">Volume: 100%</div>
-    </div>
-  </div>
-
-  <main id="tapArea">
-    <div id="output">Your prompt will appear here.</div>
-  </main>
-
-  <div id="modal">
-    <div id="modalContent">
-      <h3>Edit Prompts (List <span id="modalListLabel"></span>)</h3>
-      <textarea id="promptEditor"></textarea>
-      <div id="modalButtons">
-        <button onclick="closeModal()">Cancel</button>
-        <button onclick="savePrompts()">Save</button>
-      </div>
-    </div>
-  </div>
-
-  <script>
-    let currentList = 'A';
-    let lists = { A: [], B: [], C: [], D: [], E: [] };
-    let timer = null;
-    let minTime = 10;
-    let maxTime = 20;
-    let soundOn = true;
-    let autoPlay = false;
-    let volume = 1.0;
-    let combineMode = false;
-    let combineLists = [];
-
-    function loadSettings() {
-      for (let key of Object.keys(lists)) {
-        const stored = localStorage.getItem('promptList_' + key);
-        if (stored) lists[key] = JSON.parse(stored);
-      }
+      max-width: 480px;
     }
 
-    function saveCurrentList() {
-      localStorage.setItem('promptList_' + currentList, JSON.stringify(lists[currentList]));
+    /* Names panel (inline editable fields) */
+    #namesPanel { display: none; }
+    #namesPanel.show { display: flex; }
+    .name-field {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      background: #1a1a1a;
+      padding: 6px 8px;
+      border: 1px solid #333;
+      border-radius: 8px;
     }
+    .name-field span {
+      font-size: 12px; color: #aaa;
+      min-width: 1.5em; te
 
-    function switchList(letter) {
-      currentList = letter;
-      document.querySelectorAll('.list-buttons button').forEach(btn => btn.classList.remove('active'));
-      document.getElementById('btn' + letter).classList.add('active');
-      generatePrompt();
-    }
-
-    function getRandomPromptFromList(letter) {
-      const list = lists[letter];
-      return list.length === 0 ? `[No items in ${letter}]` : list[Math.floor(Math.random() * list.length)];
-    }
-
-    function generatePrompt() {
-      let prompt;
-      if (combineMode && combineLists.length > 0) {
-        prompt = combineLists.map(letter => getRandomPromptFromList(letter)).join(' ');
-      } else {
-        prompt = getRandomPromptFromList(currentList);
-      }
-      document.getElementById('output').textContent = prompt;
-    }
-
-    function openModal() {
-      document.getElementById('promptEditor').value = lists[currentList].join('\n');
-      document.getElementById('modalListLabel').textContent = currentList;
-      document.getElementById('modal').style.display = 'flex';
-    }
-    function closeModal() {
-      document.getElementById('modal').style.display = 'none';
-    }
-    function savePrompts() {
-      lists[currentList] = document.getElementById('promptEditor').value.trim().split('\n').map(x => x.trim()).filter(Boolean);
-      saveCurrentList();
-      closeModal();
-      generatePrompt();
-    }
-
-    function setTimerPreset(min, max) {
-      minTime = min; maxTime = max;
-      if (autoPlay) startTimer();
-    }
-    function applyCustomTime() {
-      const min = parseInt(document.getElementById('minCustom').value, 10);
-      const max = parseInt(document.getElementById('maxCustom').value, 10);
-      if (min > 0 && max >= min) {
-        minTime = min; maxTime = max;
-        if (autoPlay) startTimer();
-      }
-    }
-    function startTimer() {
-      if (timer) clearTimeout(timer);
-      const delay = Math.floor(Math.random() * (maxTime - minTime + 1) + minTime) * 1000;
-      timer = setTimeout(() => {
-        generatePrompt();
-        if (autoPlay) startTimer();
-      }, delay);
-    }
-
-    function toggleSound() { soundOn = !soundOn; }
-    function toggleAuto() { autoPlay = !autoPlay; if (autoPlay) startTimer(); else clearTimeout(timer); }
-    function toggleCombine() {
-      combineMode = !combineMode;
-      document.getElementById('combineToggle').textContent = combineMode ? "🔗 Combine: ON" : "🔗 Combine: OFF";
-      document.getElementById('combinePanel').classList.toggle('show', combineMode);
-    }
-    function toggleCombineList(cb) {
-      if (cb.checked) { if (!combineLists.includes(cb.value)) combineLists.push(cb.value); }
-      else { combineLists = combineLists.filter(l => l !== cb.value); }
-      generatePrompt();
-    }
-
-    // Click/tap to advance
-    document.body.addEventListener('click', (e) => {
-      if (e.target.closest('.controls') || e.target.closest('#modal')) return;
-      generatePrompt();
-    });
-
-    // Any key press (PC) to advance
-    window.addEventListener('keydown', (e) => {
-      if (document.getElementById('modal').style.display === 'flex') return;
-      generatePrompt();
-    });
-
-    loadSettings();
-    switchList('A');
-  </script>
-</body>
-</html>
