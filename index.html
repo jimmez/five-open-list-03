@@ -27,7 +27,7 @@
       z-index: 2;
     }
 
-    .list-buttons, .toggle-buttons, .speed-buttons {
+    .list-buttons, .toggle-buttons, .speed-buttons, .timing-buttons {
       display: flex;
       gap: 10px;
       margin: 5px 0;
@@ -53,14 +53,6 @@
       margin: 30px 20px 10px;
       word-break: break-word;
       z-index: 1;
-    }
-
-    .rename-list {
-      padding: 6px 12px;
-      background: #333;
-      color: white;
-      border-radius: 4px;
-      font-size: 14px;
     }
 
     /* Modal styling */
@@ -95,18 +87,25 @@
 
     #modalButtons { margin-top: 10px; text-align: right; }
 
+    .rename-list {
+      padding: 6px 12px;
+      background: #333;
+      color: white;
+      border-radius: 4px;
+      font-size: 14px;
+    }
+
   </style>
 </head>
 <body>
 
   <div class="controls">
-    <!-- Toggle Buttons (sound, auto) -->
     <div class="toggle-buttons">
       <button id="soundToggle" onclick="toggleSound()">🔊 Sound: ON</button>
       <button id="autoToggle" onclick="toggleAuto()">▶️ Auto: OFF</button>
     </div>
 
-    <!-- List Buttons (now with 10 lists) -->
+    <!-- List Buttons -->
     <div class="list-buttons">
       <button onclick="toggleList('A')" id="btnA">List A</button>
       <button onclick="toggleList('B')" id="btnB">List B</button>
@@ -120,17 +119,38 @@
       <button onclick="toggleList('J')" id="btnJ">List J</button>
     </div>
 
-    <!-- Rename Inputs (allow renaming lists) -->
+    <!-- Renaming Inputs -->
     <div class="rename-list">
       <input type="text" id="renameA" placeholder="Rename List A">
       <button onclick="renameList('A')">Rename</button>
+      <input type="text" id="renameB" placeholder="Rename List B">
+      <button onclick="renameList('B')">Rename</button>
+      <input type="text" id="renameC" placeholder="Rename List C">
+      <button onclick="renameList('C')">Rename</button>
+      <!-- Add more rename inputs if necessary -->
     </div>
 
-    <!-- Speed Buttons -->
+    <!-- Speed Control Buttons -->
     <div class="speed-buttons">
       <button onclick="setSpeed(1.0)">Normal Speed</button>
       <button onclick="setSpeed(1.2)">Fast Speed</button>
       <button onclick="setSpeed(0.8)">Slow Speed</button>
+    </div>
+
+    <!-- Time Interval Buttons -->
+    <div class="timing-buttons">
+      <button onclick="setTimerPreset(5, 10)">5–10s</button>
+      <button onclick="setTimerPreset(10, 20)">10–20s</button>
+      <button onclick="setTimerPreset(30, 60)">30–60s</button>
+      <button onclick="setTimerPreset(90, 120)">90–120s</button>
+      <button onclick="setTimerPreset(150, 300)">150–300s</button>
+    </div>
+
+    <div class="custom-time">
+      Custom:
+      <input type="number" id="minCustom" value="10" min="1">–
+      <input type="number" id="maxCustom" value="60" min="1">s
+      <button onclick="applyCustomTime()">Set</button>
     </div>
 
     <button id="editBtn" onclick="openModal()">✏️ Edit Current List</button>
@@ -181,6 +201,8 @@
       const newName = document.getElementById('rename' + letter).value;
       if (newName) {
         document.getElementById('btn' + letter).textContent = newName;  // Update button text
+        // Save the renamed list name for modal display
+        lists[letter].name = newName;
       }
     }
 
@@ -189,6 +211,24 @@
       speechSpeed = speed;
       document.querySelectorAll('.speed-buttons button').forEach(btn => btn.classList.remove('active'));
       event.target.classList.add('active');
+    }
+
+    // Set time interval for prompts
+    function setTimerPreset(min, max) {
+      minTime = min; 
+      maxTime = max;
+      if (autoPlay) startTimer();
+    }
+
+    // Apply custom time range
+    function applyCustomTime() {
+      const min = parseInt(document.getElementById('minCustom').value, 10);
+      const max = parseInt(document.getElementById('maxCustom').value, 10);
+      if (min > 0 && max >= min) {
+        minTime = min; 
+        maxTime = max;
+        if (autoPlay) startTimer();
+      }
     }
 
     // Get random prompt from active lists
@@ -242,7 +282,7 @@
     // Open and save prompts in the modal
     function openModal() {
       document.getElementById('promptEditor').value = lists[currentList].join('\n');
-      document.getElementById('modalListLabel').textContent = currentList;
+      document.getElementById('modalListLabel').textContent = lists[currentList].name || currentList; // Show renamed list
       document.getElementById('modal').style.display = 'flex';
     }
 
