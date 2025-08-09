@@ -93,9 +93,22 @@
 
     #modalButtons { margin-top: 10px; text-align: right; }
 
+    /* Positioning for "Jimmy James" text */
+    #topRightText {
+      position: fixed;
+      top: 10px;
+      right: 10px;
+      font-size: 14px;
+      color: white;
+      z-index: 10;
+    }
+
   </style>
 </head>
 <body>
+
+  <!-- Added text in the top right corner -->
+  <div id="topRightText">Jimmy James - 09.08.2025 - 14:43</div>
 
   <div class="controls">
     <div class="toggle-buttons">
@@ -222,7 +235,8 @@
 
     function savePrompts() {
       lists[currentList] = document.getElementById('promptEditor').value.trim().split('\n').map(x => x.trim()).filter(Boolean);
-      saveCurrentList();
+      // Save the list to localStorage or a backend if needed
+      localStorage.setItem('list_' + currentList, JSON.stringify(lists[currentList]));
       closeModal();
       generatePrompt();
     }
@@ -241,5 +255,6 @@
 
     // Timer logic and other utility functions...
   </script>
+
 </body>
 </html>
